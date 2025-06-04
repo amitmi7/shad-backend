@@ -1,1 +1,1 @@
-# shad-backend
+# react-shad-setup
