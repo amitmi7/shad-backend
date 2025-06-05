@@ -5,68 +5,59 @@ const User = require("../models/User");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Google Auth Controller
 exports.googleAuth = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) {
-      return response(res, {
-        status: 400,
-        msg: "Token is required",
-      });
+      return res.status(400).json({ success: false, message: "Token is required" });
     }
-
-    // console.log("Google token received:", token);
-
     // Verify Google token
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-
-    console.log("ticket",ticket);
-    
-
-    const { name, email, picture, sub: googleId } = ticket.getPayload();
-    console.log(name, email);
-
-    // Only allow login if user already exists in Admin collection
+    const { name, email, picture } = ticket.getPayload();
+    // Check if the user exists
     let user = await User.findOne({ email });
-    console.log(!user);
-
+    // If user does not exist, register a new user
     if (!user) {
-      return res.send(response(409, false, "You are not authorized"));
+      const defaultPasswordHash =
+        "$2b$10$0PQybQkqvqN3Uy8P4.97Cei/W0NuZxxQxsvTppF7RGk/8Uobed7pi"; // Manual hashed password
+      user = new User({
+        name: name || "Google User",
+        email,
+        password: defaultPasswordHash,
+      });
+
+      await user.save();
     }
-
-    // // Update name or profileImage if changed
-    // const updates = {};
-    // if (user.name !== name) updates.name = name;
-    // if (user.profileImage !== picture) updates.profileImage = picture;
-    // if (Object.keys(updates).length > 0) {
-    //     await Admin.updateOne({ _id: user._id }, { $set: updates });
-    //     user = await Admin.findById(user._id); // refresh user data
-    // }
-
-    // Generate JWT
+    // Generate JWT token
     const jwtToken = jwt.sign(
       { id: user._id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-
     // Send response
-    res.send(
-      response(200, true, "Login successful", {
-        authToken: token,
-        user: { id: user._id, name: user.name, email: user.email },
-      })
-    );
+    res.status(200).json({
+      success: true,
+      message: "Login successful",
+      data: {
+        authToken: jwtToken,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          picture: picture || null,
+        },
+      },
+    });
   } catch (error) {
-    console.log(error);
-    return response(res, {
-      status: 500,
-      msg: "Google authentication failed",
+    console.error("Error in Google authentication:", error);
+    res.status(500).json({
+      success: false,
+      message: "Google authentication failed",
       error: error.message,
     });
   }
 };
+

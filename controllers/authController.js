@@ -97,6 +97,95 @@ exports.loginUser = async (req, res) => {
   }
 };
 
+
+
+exports.sendOtpForResetPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.send(response(400, false, "Email is required"));
+
+    const user = await User.findOne({ email });
+    if (!user) return res.send(response(404, false, "Email not registered"));
+
+    const otp = generateOtp();
+    await Otp.findOneAndUpdate(
+      { email },
+      { otp, createdAt: Date.now() },
+      { upsert: true }
+    );
+
+    await sendEmail(email, "OTP for Reset Password", `Your OTP is ${otp}`);
+    res.send(response(200, true, "OTP sent for password reset"));
+  } catch (error) {
+    res.send(response(500, false, "Error sending OTP"));
+  }
+};
+
+exports.verifyOtpForResetPassword = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.send(response(400, false, "Email and OTP are required"));
+
+    const otpRecord = await Otp.findOne({ email });
+    if (!otpRecord || otpRecord.otp !== otp) {
+      return res.send(response(400, false, "Invalid or expired OTP"));
+    }
+
+    await Otp.deleteOne({ email }); // OTP verified, delete it from DB
+    const token = jwt.sign({ email }, config.jwtSecret, { expiresIn: "15m" });
+    res.send(response(200, true, "OTP verified successfully", { token }));
+  } catch (error) {
+    res.send(response(500, false, "Error verifying OTP"));
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    if (!token) return res.send(response(400, false, "Token is required"));
+    if (!password )
+      return res.send(response(400, false, "Password is required"));
+    let email;
+    try {
+      const decoded = jwt.verify(token, config.jwtSecret);
+      email = decoded.email;
+    } catch (error) {
+      return res.send(response(400, false, "Invalid or expired token"));
+    }
+    const user = await User.findOne({ email });
+    if (!user) return res.send(response(404, false, "User not found"));
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    await user.save();
+    res.send(response(200, true, "Password reset successfully"));
+  } catch (error) {
+    res.send(response(500, false, "Error resetting password"));
+  }
+};
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// -------------------------------------------------------------------------------------//
+
 exports.chatWithGemini = async (req, res) => {
   try {
     const { message } = req.body;
