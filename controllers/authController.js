@@ -12,24 +12,64 @@ const fetch = require('node-fetch');
 const Chat = require("../models/Chat");
 const OpenAI = require("openai");
 const nodemailer = require("nodemailer");
+const Otp = require("../models/Otp");
+const { sendEmail } = require("../utils/sendEmail");
+
+// Generate random OTP
+const generateOtp = () => Math.floor(100000 + Math.random() * 900000);
+
+exports.sendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.send(response(400, false, "Email is required"));
+
+    const otp = generateOtp();
+    await Otp.findOneAndUpdate(
+      { email },
+      { otp, createdAt: Date.now() },
+      { upsert: true }
+    );
+
+    await sendEmail(email, "Your OTP for Registration", `Your OTP is ${otp}`);
+    res.send(response(200, true, "OTP sent successfully"));
+  } catch (error) {
+    res.send(response(500, false, "Error sending OTP"));
+  }
+};
+
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) return res.send(response(400, false, "Email and OTP are required"));
+    const otpRecord = await Otp.findOne({ email });
+    if (!otpRecord || otpRecord.otp !== otp) {
+      return res.send(response(400, false, "Invalid or expired OTP"));
+    }
+    await Otp.deleteOne({ email }); // OTP verified, delete it from DB
+    res.send(response(200, true, "OTP verified successfully"));
+  } catch (error) {
+    res.send(response(500, false, "Error verifying OTP"));
+  }
+};
 
 exports.registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { email, password, name } = req.body;
+    if (!email || !password) return res.send(response(400, false, "Email and Password are required"));
 
-    // Check if user with email already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.send(response(409, false, "Email already registered"));
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ name, email, password: hashedPassword });
+    const newUser = new User({ name: name || "user", email, password: hashedPassword });
     await newUser.save();
-    res.send(response(200, true, "User registered successfully!"));
+    res.send(response(200, true, "User registered successfully"));
   } catch (error) {
-    res.send(response());
+    res.send(response(500, false, "Error registering user"));
   }
 };
+
 
 exports.loginUser = async (req, res) => {
   try {
@@ -217,27 +257,27 @@ exports.getChatHistoryByUserId = async (req, res) => {
 
 // Chat with Gemini and Schedule Email
 
-// Nodemailer transporter setup
-const transporter = nodemailer.createTransport({
-  host: config.emailHost,
-  port: config.emailPort,
-  auth: {
-    user: config.emailUser,
-    pass: config.emailPassword,
-  },
-});
+// // Nodemailer transporter setup
+// const transporter = nodemailer.createTransport({
+//   host: config.emailHost,
+//   port: config.emailPort,
+//   auth: {
+//     user: config.emailUser,
+//     pass: config.emailPassword,
+//   },
+// });
 
-// Send Email Function
-exports.sendEmail = async (to, subject, text) => {
-  const mailOptions = {
-    from: config.emailUser,
-    to,
-    subject,
-    text,
-  };
+// // Send Email Function
+// exports.sendEmail = async (to, subject, text) => {
+//   const mailOptions = {
+//     from: config.emailUser,
+//     to,
+//     subject,
+//     text,
+//   };
 
-  return transporter.sendMail(mailOptions);
-};
+//   return transporter.sendMail(mailOptions);
+// };
 
 exports.chatWithGeminiEmailSchedule = async (req, res) => {
   try {

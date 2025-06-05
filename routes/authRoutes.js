@@ -1,6 +1,6 @@
 const express = require("express");
 const multer = require("multer");
-const { loginUser, registerUser, chatWithGemini, getChatHistoryByUserId, chatWithGeminiGPT, chatWithGeminiGPTStream, chatWithGeminiEmailSchedule, chatWithGeminiImageRecognize } = require("../controllers/authController");
+const { loginUser, registerUser, chatWithGemini, getChatHistoryByUserId, chatWithGeminiGPT, chatWithGeminiGPTStream, chatWithGeminiEmailSchedule, chatWithGeminiImageRecognize, sendOtp, verifyOtp } = require("../controllers/authController");
 const {googleAuth} = require("../controllers/googleController")
 const { validateRegister } = require("../middleware/validateRequest");
 const { authenticateUser } = require("../middleware/authenticateUser");
@@ -24,7 +24,9 @@ const upload = multer({
 
 const router = express.Router();
 
-router.post("/register", validateRegister, registerUser);
+router.post("/sendotp", sendOtp);
+router.post("/verifyotp", verifyOtp);
+router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/chat",authenticateUser, chatWithGeminiGPT);
 router.get("/stream-chat", chatWithGeminiGPTStream);
