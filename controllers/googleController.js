@@ -23,6 +23,10 @@ exports.googleAuth = async (req, res) => {
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
+
+    console.log(ticket);
+    
+
     const { name, email, picture, sub: googleId } = ticket.getPayload();
     console.log(name, email);
 
