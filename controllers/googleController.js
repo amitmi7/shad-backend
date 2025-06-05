@@ -16,7 +16,7 @@ exports.googleAuth = async (req, res) => {
       });
     }
 
-    console.log("Google token received:", token);
+    // console.log("Google token received:", token);
 
     // Verify Google token
     const ticket = await client.verifyIdToken({
