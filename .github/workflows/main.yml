@@ -1,27 +1,33 @@
-name: Deploy to EC2
+name: Production Deployment
 
 on:
   push:
-    branches:
-      - main # This workflow runs when changes are pushed to the 'main' branch
+    branches: [main]
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # Specifies the type of runner to use
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3 # Checks out your repository code
-
-      - name: Deploy via SSH
+      - name: SSH Deploy
         uses: appleboy/ssh-action@v0.1.6
         with:
           host: "13.203.161.198"
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd shad-backend || git clone git@github.com:amitmi7/shad-backend.git
+            # Clean up previous deployment if exists
+            rm -rf shad-backend || true
+            
+            # Clone fresh repository using SSH
+            git clone git@github.com:amitmi7/shad-backend.git
+            
+            # Enter directory and install dependencies
             cd shad-backend
-            git pull origin main
-            npm install
-            pm2 restart app.js || pm2 start app.js --name "shad-backend"
+            npm install --production
+            
+            # Restart application
+            pm2 delete shad-backend || true
+            pm2 start app.js --name "shad-backend" --update-env
+            pm2 save
+            
+            echo "✅ Deployment completed successfully"
