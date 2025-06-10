@@ -8,6 +8,10 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Add GitHub to known_hosts
+        run: |
+          ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+
       - name: SSH Deploy
         uses: appleboy/ssh-action@v0.1.6
         with:
@@ -15,13 +19,10 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Add GitHub to known_hosts
-            ssh-keyscan -H github.com >> ~/.ssh/known_hosts
-
-            # Navigate to home directory
+            # Navigate to the home directory
             cd /home/ubuntu
 
-            # Handle existing directory or clone the repository
+            # Handle repository: reset if exists or clone if missing
             if [ -d "shad-backend" ]; then
               cd shad-backend
               git reset --hard
@@ -34,9 +35,11 @@ jobs:
             # Install dependencies
             npm install --production
 
-            # Restart the application using PM2
+            # Clean up previous processes and start new one
             pm2 delete shad-backend || true
+            pm2 delete app || true
             pm2 start app.js --name "shad-backend" --update-env
             pm2 save
 
+            # Confirm deployment success
             echo "✅ Deployment completed successfully"
