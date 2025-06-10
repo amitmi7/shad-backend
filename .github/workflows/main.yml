@@ -19,7 +19,7 @@ jobs:
             rm -rf shad-backend || true
             
             # Clone fresh repository using SSH
-            git clone git@github.com:amitmi7/shad-backend.git
+            git clone https://github.com/amitmi7/shad-backend.git
             
             # Enter directory and install dependencies
             cd shad-backend
