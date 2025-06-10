@@ -1,0 +1,49 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main # This workflow runs when changes are pushed to the 'main' branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest # Specifies the type of runner to use
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3 # Checks out your repository code
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v0.1.6 # Uses the appleboy/ssh-action for SSH connectivity
+        with:
+          host: "13.203.161.198" # Your EC2 instance's public IP address
+          username: "ubuntu"      # The default username for Ubuntu EC2 instances
+          port: 22                # Standard SSH port
+          key: ${{ secrets.EC2_SSH_KEY }} # Uses the private key stored in GitHub Secrets
+
+          # The script to execute on your EC2 instance after successful SSH connection
+          script: |
+            # Navigate to the 'shad-backend' directory or clone it if it doesn't exist
+            if [ -d "shad-backend" ]; then
+              echo "Directory shad-backend exists. Navigating into it."
+              cd shad-backend
+            else
+              echo "Directory shad-backend does not exist. Cloning repository."
+              git clone https://github.com/amitmi7/shad-backend.git
+              cd shad-backend
+            fi
+
+            # Pull the latest changes from the 'main' branch
+            echo "Pulling latest changes from Git..."
+            git pull origin main
+
+            # Install Node.js dependencies
+            echo "Installing Node.js dependencies..."
+            npm install
+
+            # Manage the Node.js application with PM2
+            # Restart if already running, otherwise start it
+            echo "Managing Node.js application with PM2..."
+            pm2 restart app.js || pm2 start app.js --name "shad-backend"
+
+            echo "Deployment script finished."
