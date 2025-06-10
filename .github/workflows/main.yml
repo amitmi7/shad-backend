@@ -8,9 +8,15 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Create .ssh directory
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
       - name: Add GitHub to known_hosts
         run: |
           ssh-keyscan -H github.com >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
 
       - name: SSH Deploy
         uses: appleboy/ssh-action@v0.1.6
@@ -37,7 +43,6 @@ jobs:
 
             # Clean up previous processes and start new one
             pm2 delete shad-backend || true
-            pm2 delete app || true
             pm2 start app.js --name "shad-backend" --update-env
             pm2 save
 
