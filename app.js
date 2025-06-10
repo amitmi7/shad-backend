@@ -5,7 +5,7 @@ const dotenv = require("dotenv");
 const connectDB = require("./utils/db");
 const authRoutes = require("./routes/authRoutes");
 // const userRoutes = require("./routes/userRoutes");
-// const surveyRoutes = require("./routes/surveyRoutes"); hello server connected 
+// const surveyRoutes = require("./routes/surveyRoutes"); hello server connected again
 
 dotenv.config();
 connectDB();
